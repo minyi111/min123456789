@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queens · 皇后拼图</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #23262F;
+    --ink-soft: #565A66;
+    --shell: #1B1F2A;
+    --paper: #F6F1E4;
+    --paper-line: rgba(35,38,47,0.08);
+    --accent: #3E7C6B;
+    --accent-soft: #DCE9E4;
+    --danger: #C1503F;
+    --danger-soft: #F5DCD7;
+    --gold: #C9A24B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; min-height:100vh;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0) 0 0/22px 22px,
+      var(--shell);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    padding: 32px 16px;
+  }
+  .app {
+    width: 100%;
+    max-width: 560px;
+    display:flex; flex-direction:column; align-items:center; gap:18px;
+  }
+  .eyebrow {
+    font-family:'Space Mono', monospace;
+    font-size:12px; letter-spacing:0.28em; text-transform:uppercase;
+    color: var(--gold); opacity:0.9;
+  }
+  h1 {
+    font-family:'Space Mono', monospace;
+    font-size: 38px; font-weight:700; letter-spacing:0.02em;
+    margin: 2px 0 0 0; color: var(--paper);
+  }
+  .sub {
+    font-size:14px; color: rgba(246,241,228,0.6); text-align:center; line-height:1.6;
+    max-width: 440px;
+  }
+  .toolbar {
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    gap:10px; flex-wrap:wrap;
+  }
+  .toolbar-group { display:flex; align-items:center; gap:8px; }
+  select, button {
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:600;
+    border-radius:8px; border:1px solid rgba(246,241,228,0.18);
+    background: rgba(246,241,228,0.06); color: var(--paper);
+    padding:9px 14px; cursor:pointer; transition: all .15s ease;
+  }
+  select:hover, button:hover { background: rgba(246,241,228,0.14); }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: #EFF7F3;
+  }
+  button.primary:hover { background: #468C79; }
+  .timer {
+    font-family:'Space Mono', monospace; font-size:15px; font-weight:700;
+    background: rgba(246,241,228,0.06); border:1px solid rgba(246,241,228,0.18);
+    border-radius:8px; padding:9px 14px; min-width:74px; text-align:center;
+  }
+  .board-wrap {
+    position:relative; padding: 14px;
+    background: var(--paper);
+    border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(35,38,47,0.06);
+    width: min(90vw, 460px);
+  }
+  .board {
+    display:grid;
+    background: var(--ink);
+    border-radius: 4px;
+    overflow:hidden;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+  }
+  .cell {
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none;
+    background: repeating-radial-gradient(circle at 3px 3px, rgba(35,38,47,0.06) 0.6px, transparent 0.6px) 0 0/9px 9px;
+  }
+  .cell.conflict { filter: saturate(1.4); }
+  .cell.conflict::after {
+    content:''; position:absolute; inset:0;
+    background: rgba(193,80,63,0.28);
+    pointer-events:none;
+  }
+  .mark-x {
+    width: 34%; height: 34%; position:relative; opacity:0.75;
+  }
+  .mark-x::before, .mark-x::after {
+    content:''; position:absolute; top:50%; left:50%;
+    width: 100%; height: 3px; background: var(--ink-soft);
+    border-radius: 2px;
+  }
+  .mark-x::before { transform: translate(-50%,-50%) rotate(45deg); }
+  .mark-x::after { transform: translate(-50%,-50%) rotate(-45deg); }
+  .mark-queen {
+    width: 58%; height: 58%;
+    animation: pop 0.18s ease;
+  }
+  .mark-queen svg { width:100%; height:100%; display:block; }
+  .cell.conflict .mark-queen path,
+  .cell.conflict .mark-queen circle { fill: var(--danger) !important; }
+  @keyframes pop {
+    0% { transform: scale(0.4); opacity:0.3; }
+    70% { transform: scale(1.12); }
+    100% { transform: scale(1); opacity:1; }
+  }
+  .legend {
+    font-size:12px; color: rgba(246,241,228,0.55); text-align:center; line-height:1.7;
+  }
+  .legend b { color: rgba(246,241,228,0.85); }
+  .win-banner {
+    display:none;
+    font-family:'Space Mono', monospace;
+    background: var(--accent); color:#EFF7F3;
+    padding: 10px 20px; border-radius: 999px;
+    font-weight:700; letter-spacing:0.05em; font-size:14px;
+    transform: rotate(-2deg);
+    box-shadow: 0 8px 20px rgba(62,124,107,0.4);
+  }
+  .win-banner.show { display:inline-block; animation: stamp 0.35s ease; }
+  @keyframes stamp {
+    0% { transform: rotate(-2deg) scale(0.5); opacity:0; }
+    60% { transform: rotate(-2deg) scale(1.15); opacity:1; }
+    100% { transform: rotate(-2deg) scale(1); }
+  }
+  .generating { color: rgba(246,241,228,0.5); font-size:13px; font-family:'Space Mono', monospace; }
+  @media (prefers-reduced-motion: reduce) {
+    .mark-queen, .win-banner.show { animation: none !important; }
+  }
+  .icon-btn {
+    width: 34px; height:34px; padding:0; border-radius:999px;
+    font-family:'Space Mono', monospace; font-weight:700; font-size:14px;
+  }
+
+  /* 规则说明弹窗 */
+  .help-overlay {
+    position:fixed; inset:0; z-index:50;
+    background: rgba(20,22,28,0.72);
+    display:flex; align-items:center; justify-content:center;
+    padding: 20px;
+  }
+  .help-overlay.hidden { display:none; }
+  .help-card {
+    width:100%; max-width: 420px;
+    background: var(--paper); color: var(--ink);
+    border-radius: 16px; padding: 26px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+    max-height: 86vh; overflow-y:auto;
+  }
+  .help-eyebrow {
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.22em;
+    text-transform:uppercase; color: var(--accent); margin-bottom:6px;
+  }
+  .help-title { font-family:'Space Mono', monospace; font-size:22px; margin:0 0 10px 0; }
+  .help-goal { font-size:13.5px; line-height:1.7; color: var(--ink-soft); margin:0 0 20px 0; }
+  .help-row { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+  .help-icon-box {
+    flex:none; width:36px; height:36px; border-radius:8px;
+    background: #EFE7D3; display:flex; align-items:center; justify-content:center;
+    border: 1px solid rgba(35,38,47,0.1);
+  }
+  .help-icon-box .mark-queen { width:60%; height:60%; animation:none; }
+  .help-icon-box .mark-x { width:44%; height:44%; opacity:0.85; }
+  .help-icon-box .mark-x::before, .help-icon-box .mark-x::after { background: var(--ink-soft); }
+  .help-icon-conflict { background: var(--danger-soft) !important; position:relative; }
+  .help-icon-conflict::after {
+    content:''; position:absolute; inset:7px; border-radius:4px; background: rgba(193,80,63,0.4);
+  }
+  .help-icon-solved { background: var(--accent-soft) !important; color: var(--accent); font-weight:700; font-size:16px; }
+  .help-text { font-size:13px; line-height:1.6; color: var(--ink); padding-top:6px; }
+  .help-close-btn { width:100%; margin-top:8px; padding:12px; font-size:14px; }
+  /* 迷你悬浮窗里空间太小，不适合展示规则说明 */
+  @media (display-mode: picture-in-picture) {
+    .help-overlay { display:none !important; }
+  }
+  /* 悬浮小窗内的紧凑排版：去掉说明文字和大标题，尽量小巧不显眼 */
+  @media (display-mode: picture-in-picture) {
+    html, body { padding: 8px; align-items: flex-start; }
+    .eyebrow, .sub, .legend, #genStatus { display: none; }
+    h1 { font-size: 18px; margin: 0; }
+    .toolbar { gap: 6px; }
+    select, button, .timer { padding: 5px 8px; font-size: 11px; }
+    .board-wrap { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="eyebrow">Puzzle Prototype No.03</div>
+  <h1>QUEENS</h1>
+  <div class="sub">每行、每列、每个色块恰好放一枚皇后，且任意两枚皇后不能相邻（含对角线）。第一次玩点右上角「?」看规则说明。</div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <select id="sizeSelect">
+        <option value="6">6 × 6</option>
+        <option value="7" selected>7 × 7</option>
+        <option value="8">8 × 8</option>
+      </select>
+      <button class="primary" id="newGameBtn">新关卡</button>
+      <button id="clearBtn">清空</button>
+      <button id="pipBtn" title="悬浮在所有窗口最上层，可拖到任意角落">迷你模式</button>
+      <button id="helpBtn" class="icon-btn" title="怎么玩">?</button>
+    </div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div id="winBanner" class="win-banner">✓ SOLVED</div>
+  <div id="genStatus" class="generating"></div>
+
+  <div class="legend"><b>提示</b>：红色高亮代表当前存在冲突（同行/同列/同色块/相邻）。</div>
+
+  <div id="helpOverlay" class="help-overlay">
+    <div class="help-card">
+      <div class="help-eyebrow">First time?</div>
+      <h2 class="help-title">怎么玩 Queens</h2>
+      <p class="help-goal">在棋盘上摆放皇后：<b>每一行、每一列、每一个颜色区域</b>都要恰好有一枚皇后，并且任意两枚皇后不能相邻（含对角线方向）。</p>
+
+      <div class="help-row">
+        <div class="help-icon-box"><div class="mark-queen" id="helpQueenIcon"></div></div>
+        <div class="help-text"><b>左键单击</b>格子：空 → 皇后 → 叉 → 空，依次循环。先假设放皇后，用叉排除不可能的位置。</div>
+      </div>
+
+      <div class="help-row">
+        <div class="help-icon-box"><div class="mark-x"></div></div>
+        <div class="help-text"><b>右键按住并拖动</b>：连续在多个格子上涂抹叉号，滑过就能批量标记；从一个已经是叉的格子开始拖，则会变成批量擦除。</div>
+      </div>
+
+      <div class="help-row">
+        <div class="help-icon-box help-icon-conflict"></div>
+        <div class="help-text"><b>红色高亮</b>代表当前有冲突（同行 / 同列 / 同色块 / 相邻），照着提示调整位置即可。</div>
+      </div>
+
+      <div class="help-row">
+        <div class="help-icon-box help-icon-solved">✓</div>
+        <div class="help-text">摆满且没有任何冲突，就会弹出 <b>SOLVED</b> 通关印章。</div>
+      </div>
+
+      <button class="primary help-close-btn" id="helpCloseBtn">知道了，开始挑战</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const REGION_COLORS = [
+    '#CFE0D6','#E7C9C0','#F1DFA4','#C7D9E8',
+    '#DCC9E3','#E3C7A8','#BFE0D9','#EFE0C2'
+  ];
+  // 标记状态：0 空，1 叉，2 皇后。左键点击循环顺序为 空(0) → 皇后(2) → 叉(1) → 空(0)
+  const CLICK_NEXT_STATE = { 0: 2, 2: 1, 1: 0 };
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  // 1) 生成一组"一行一列一枚皇后 + 不相邻(含对角)"的随机合法摆放
+  function generatePlacement(n){
+    const placement = new Array(n).fill(-1);
+    const usedCols = new Set();
+    function backtrack(row){
+      if(row === n) return true;
+      const order = shuffle([...Array(n).keys()]);
+      for(const c of order){
+        if(usedCols.has(c)) continue;
+        if(row > 0 && Math.abs(placement[row-1]-c) <= 1) continue;
+        placement[row] = c;
+        usedCols.add(c);
+        if(backtrack(row+1)) return true;
+        usedCols.delete(c);
+        placement[row] = -1;
+      }
+      return false;
+    }
+    return backtrack(0) ? placement : null;
+  }
+
+  // 2) 以每枚皇后为种子，随机多源 BFS 生长出彼此连通的色块区域
+  function growRegions(placement, n){
+    const grid = Array.from({length:n}, () => new Array(n).fill(-1));
+    let queue = [];
+    for(let i=0;i<n;i++){
+      grid[i][placement[i]] = i;
+      queue.push([i, i, placement[i]]);
+    }
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    while(queue.length){
+      const idx = Math.floor(Math.random()*queue.length);
+      const [region, r, c] = queue.splice(idx,1)[0];
+      for(const [dr,dc] of dirs){
+        const nr = r+dr, nc = c+dc;
+        if(nr<0||nr>=n||nc<0||nc>=n) continue;
+        if(grid[nr][nc] !== -1) continue;
+        grid[nr][nc] = region;
+        queue.push([region, nr, nc]);
+      }
+    }
+    return grid;
+  }
+
+  // 3) 校验区域图在"一行一列一区域+不相邻"规则下解的数量（提前在 limit 处截止）
+  function countSolutions(regionGrid, n, limit){
+    const usedCols = new Set();
+    const usedRegions = new Set();
+    let count = 0;
+    function backtrack(row, prevCol){
+      if(count >= limit) return;
+      if(row === n){ count++; return; }
+      for(let c=0;c<n;c++){
+        if(usedCols.has(c)) continue;
+        const region = regionGrid[row][c];
+        if(usedRegions.has(region)) continue;
+        if(row>0 && Math.abs(prevCol-c)<=1) continue;
+        usedCols.add(c); usedRegions.add(region);
+        backtrack(row+1, c);
+        usedCols.delete(c); usedRegions.delete(region);
+        if(count >= limit) return;
+      }
+    }
+    backtrack(0, -1);
+    return count;
+  }
+
+  function generatePuzzle(n){
+    for(let pAttempt=0; pAttempt<40; pAttempt++){
+      const placement = generatePlacement(n);
+      if(!placement) continue;
+      for(let rAttempt=0; rAttempt<120; rAttempt++){
+        const regionGrid = growRegions(placement, n);
+        if(countSolutions(regionGrid, n, 2) === 1){
+          return { placement, regionGrid };
+        }
+      }
+    }
+    // 兜底：极少数情况下仍未找到唯一解，直接返回最后一次生成结果
+    const placement = generatePlacement(n);
+    return { placement, regionGrid: growRegions(placement, n) };
+  }
+
+  // ---------- 游戏状态与渲染 ----------
+  let n = 7;
+  let regionGrid = [];
+  let marks = [];        // 0 empty, 1 X, 2 queen
+  let conflictSet = new Set();
+  let timerHandle = null;
+  let seconds = 0;
+  let started = false;
+  let isDragging = false;
+  let dragValue = 0;
+  let cellEls = [];
+
+  const boardEl = document.getElementById('board');
+  const timerEl = document.getElementById('timer');
+  const winBanner = document.getElementById('winBanner');
+  const genStatus = document.getElementById('genStatus');
+  const sizeSelect = document.getElementById('sizeSelect');
+
+  function crownSVG(fill){
+    return `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 18h16l1-9-5 3-4-6-4 6-5-3 1 9z" fill="${fill}" stroke="${fill}" stroke-width="0.6" stroke-linejoin="round"/>
+      <circle cx="4" cy="8" r="1.3" fill="${fill}"/>
+      <circle cx="20" cy="8" r="1.3" fill="${fill}"/>
+      <circle cx="12" cy="5.5" r="1.3" fill="${fill}"/>
+    </svg>`;
+  }
+
+  function resetTimer(){
+    clearInterval(timerHandle);
+    seconds = 0; started = false;
+    timerEl.textContent = '00:00';
+  }
+  function startTimerIfNeeded(){
+    if(started) return;
+    started = true;
+    timerHandle = setInterval(()=>{
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      timerEl.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function newGame(size){
+    n = size;
+    winBanner.classList.remove('show');
+    resetTimer();
+    marks = Array.from({length:n}, ()=> new Array(n).fill(0));
+    genStatus.textContent = '正在生成关卡…';
+    boardEl.innerHTML = '';
+    setTimeout(()=>{
+      const puzzle = generatePuzzle(n);
+      regionGrid = puzzle.regionGrid;
+      genStatus.textContent = '';
+      render();
+    }, 20);
+  }
+
+  function computeConflicts(){
+    const positions = [];
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(marks[r][c]===2) positions.push([r,c]);
+    const bad = new Set();
+    for(let i=0;i<positions.length;i++){
+      for(let j=i+1;j<positions.length;j++){
+        const [r1,c1] = positions[i], [r2,c2] = positions[j];
+        const sameRow = r1===r2;
+        const sameCol = c1===c2;
+        const sameRegion = regionGrid[r1][c1] === regionGrid[r2][c2];
+        const adjacent = Math.abs(r1-r2)<=1 && Math.abs(c1-c2)<=1;
+        if(sameRow || sameCol || sameRegion || adjacent){
+          bad.add(r1+'-'+c1); bad.add(r2+'-'+c2);
+        }
+      }
+    }
+    return { bad, count: positions.length };
+  }
+
+  function checkWin(bad, count){
+    if(count === n && bad.size === 0){
+      clearInterval(timerHandle);
+      winBanner.classList.add('show');
+    }
+  }
+
+  function markContent(r, c, isConflict){
+    const val = marks[r][c];
+    if(val === 1){
+      return '<div class="mark-x"></div>';
+    } else if(val === 2){
+      return `<div class="mark-queen">${crownSVG(isConflict ? '#C1503F' : '#23262F')}</div>`;
+    }
+    return '';
+  }
+
+  // 轻量更新：只刷新每个格子的标记内容和冲突高亮，不重建边框/底色，
+  // 这样拖拽涂抹时够流畅，不会因为整块 DOM 重建而丢帧或打断 mouseenter。
+  function updateAllCellVisuals(){
+    const { bad, count } = computeConflicts();
+    conflictSet = bad;
+    for(let r=0;r<n;r++){
+      for(let c=0;c<n;c++){
+        const cell = cellEls[r][c];
+        const isConflict = conflictSet.has(r+'-'+c);
+        cell.classList.toggle('conflict', isConflict);
+        cell.innerHTML = markContent(r, c, isConflict);
+      }
+    }
+    checkWin(bad, count);
+  }
+
+  function paintCell(r, c, value){
+    if(marks[r][c] === value) return;
+    marks[r][c] = value;
+    updateAllCellVisuals();
+  }
+
+  function render(){
+    boardEl.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+    boardEl.innerHTML = '';
+    cellEls = Array.from({length:n}, ()=> new Array(n));
+
+    for(let r=0;r<n;r++){
+      for(let c=0;c<n;c++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.style.background = REGION_COLORS[regionGrid[r][c] % REGION_COLORS.length];
+
+        // 区域边界：与右/下相邻格子区域不同则加粗墨色边框
+        const thin = '1px solid rgba(35,38,47,0.12)';
+        const thick = '2.5px solid #23262F';
+        cell.style.borderRight = (c<n-1 && regionGrid[r][c]!==regionGrid[r][c+1]) ? thick : thin;
+        cell.style.borderBottom = (r<n-1 && regionGrid[r][c]!==regionGrid[r+1][c]) ? thick : thin;
+        cell.style.borderLeft = (c===0) ? thick : 'none';
+        cell.style.borderTop = (r===0) ? thick : 'none';
+
+        // 左键单击：空 → 皇后 → 叉 → 空 循环（先假设填皇后，叉留作后续排除辅助）
+        cell.addEventListener('click', ()=>{
+          if(isDragging) return;
+          startTimerIfNeeded();
+          marks[r][c] = CLICK_NEXT_STATE[marks[r][c]];
+          updateAllCellVisuals();
+        });
+
+        // 右键按住并滑动：连续涂抹「叉」；若起始格已是叉，则整段拖拽变成擦除
+        cell.addEventListener('mousedown', (e)=>{
+          if(e.button !== 2) return;
+          e.preventDefault();
+          startTimerIfNeeded();
+          isDragging = true;
+          dragValue = marks[r][c] === 1 ? 0 : 1;
+          paintCell(r, c, dragValue);
+        });
+        cell.addEventListener('mouseenter', ()=>{
+          if(!isDragging) return;
+          paintCell(r, c, dragValue);
+        });
+
+        cellEls[r][c] = cell;
+        boardEl.appendChild(cell);
+      }
+    }
+    updateAllCellVisuals();
+  }
+
+  document.getElementById('newGameBtn').addEventListener('click', ()=> newGame(n));
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    marks = Array.from({length:n}, ()=> new Array(n).fill(0));
+    winBanner.classList.remove('show');
+    resetTimer();
+    render();
+  });
+  sizeSelect.addEventListener('change', (e)=> newGame(parseInt(e.target.value,10)));
+
+  // 拖拽结束于任意位置都要收尾，避免鼠标移出棋盘后仍处于"涂抹中"状态
+  document.addEventListener('mouseup', ()=>{ isDragging = false; });
+  boardEl.addEventListener('contextmenu', (e)=> e.preventDefault());
+
+  // ---------- 迷你悬浮窗模式（Document Picture-in-Picture） ----------
+  // 目前仅 Chrome / Edge 等 Chromium 内核浏览器支持；悬浮窗会浮在所有应用最上层，
+  // 用户可以自由拖拽到屏幕任意角落（比如右下角），关闭悬浮窗内容会自动搬回原页面。
+  const appEl = document.querySelector('.app');
+  const pipBtn = document.getElementById('pipBtn');
+  pipBtn.addEventListener('click', async () => {
+    if(!('documentPictureInPicture' in window)){
+      alert('当前浏览器不支持迷你悬浮窗，换成最新版 Chrome 或 Edge 试试～');
+      return;
+    }
+    const pipWindow = await window.documentPictureInPicture.requestWindow({
+      width: 320,
+      height: 430
+    });
+    // 把当前页面的样式表复制一份到悬浮窗里，悬浮窗是独立的 document，不会自动继承样式
+    [...document.styleSheets].forEach(styleSheet => {
+      try {
+        const css = [...styleSheet.cssRules].map(rule => rule.cssText).join('\n');
+        const style = document.createElement('style');
+        style.textContent = css;
+        pipWindow.document.head.appendChild(style);
+      } catch (err) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = styleSheet.href;
+        pipWindow.document.head.appendChild(link);
+      }
+    });
+    pipWindow.document.body.style.margin = '0';
+    pipWindow.document.title = 'Queens';
+
+    // 把整块 UI 节点搬进悬浮窗（事件监听会随节点一起保留，不需要重新绑定）
+    pipWindow.document.body.appendChild(appEl);
+
+    // 悬浮窗关闭时，把 UI 节点搬回主页面
+    pipWindow.addEventListener('pagehide', () => {
+      document.body.appendChild(appEl);
+    }, { once: true });
+  });
+
+  // ---------- 规则说明弹窗 ----------
+  const helpOverlay = document.getElementById('helpOverlay');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpCloseBtn = document.getElementById('helpCloseBtn');
+  document.getElementById('helpQueenIcon').innerHTML = crownSVG('#23262F');
+
+  function openHelp(){ helpOverlay.classList.remove('hidden'); }
+  function closeHelp(){ helpOverlay.classList.add('hidden'); }
+  helpBtn.addEventListener('click', openHelp);
+  helpCloseBtn.addEventListener('click', closeHelp);
+  helpOverlay.addEventListener('click', (e)=>{ if(e.target === helpOverlay) closeHelp(); });
+
+  newGame(n);
+  openHelp(); // 首次进入自动展示规则说明
+})();
+</script>
+</body>
+</html>
