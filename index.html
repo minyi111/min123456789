@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Puzzle Lab · 拼图大厅</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #23262F;
+    --shell: #1B1F2A;
+    --paper: #F6F1E4;
+    --accent: #3E7C6B;
+    --gold: #C9A24B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; min-height:100vh;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0) 0 0/22px 22px,
+      var(--shell);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    display:flex; justify-content:center;
+    padding: 56px 20px;
+  }
+  .wrap { width:100%; max-width: 780px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .eyebrow {
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.3em;
+    text-transform:uppercase; color: var(--gold); opacity:0.9;
+  }
+  h1 {
+    font-family:'Space Mono', monospace; font-size: 44px; font-weight:700;
+    letter-spacing:0.01em; margin: 4px 0 0 0; text-align:center;
+  }
+  .sub {
+    font-size:14.5px; color: rgba(246,241,228,0.6); text-align:center;
+    line-height:1.7; max-width: 480px; margin: 4px 0 36px 0;
+  }
+  .grid {
+    width:100%; display:grid; gap:18px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .card {
+    position:relative; display:flex; flex-direction:column; gap:10px;
+    background: var(--paper); color: var(--ink);
+    border-radius: 16px; padding: 22px;
+    text-decoration:none;
+    box-shadow: 0 16px 34px rgba(0,0,0,0.28);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .card.live:hover { transform: translateY(-3px); box-shadow: 0 22px 44px rgba(0,0,0,0.34); }
+  .card.disabled { opacity: 0.45; cursor: default; pointer-events:none; }
+  .card-icon {
+    width:44px; height:44px; border-radius:10px;
+    background:#EFE7D3; display:flex; align-items:center; justify-content:center;
+    font-family:'Space Mono', monospace; font-weight:700; font-size:18px; color: var(--ink);
+  }
+  .card-title { font-family:'Space Mono', monospace; font-size:18px; font-weight:700; }
+  .card-desc { font-size:12.5px; line-height:1.55; color: #565A66; }
+  .badge {
+    position:absolute; top:18px; right:18px;
+    font-family:'Space Mono', monospace; font-size:10px; letter-spacing:0.08em;
+    padding: 4px 8px; border-radius:999px; text-transform:uppercase; font-weight:700;
+  }
+  .badge.live { background: var(--accent); color:#EFF7F3; }
+  .badge.soon { background: rgba(35,38,47,0.08); color:#565A66; }
+  footer {
+    margin-top: 44px; font-size:12px; color: rgba(246,241,228,0.4);
+    font-family:'Space Mono', monospace; text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">A Small Puzzle Collection</div>
+  <h1>PUZZLE LAB</h1>
+  <div class="sub">自己动手做的迷你解谜合集，每个都配了保证唯一解的关卡生成器。挑一个开始玩吧。</div>
+
+  <div class="grid">
+    <a href="queens.html" class="card live">
+      <span class="badge live">Live</span>
+      <div class="card-icon">♛</div>
+      <div class="card-title">Queens</div>
+      <div class="card-desc">在色块棋盘上摆皇后：每行、每列、每个色块恰好一枚，且互不相邻。</div>
+    </a>
+
+    <a href="sudoku.html" class="card live">
+      <span class="badge live">Live</span>
+      <div class="card-icon">6×6</div>
+      <div class="card-title">Mini Sudoku</div>
+      <div class="card-desc">迷你版数独：每行、每列、每个 2×3 宫格，1 到 6 各出现一次。</div>
+    </a>
+
+    <div class="card disabled">
+      <span class="badge soon">Soon</span>
+      <div class="card-icon">☀︎</div>
+      <div class="card-title">Tango</div>
+      <div class="card-desc">太阳/月亮二值填充，行列平衡 + 相邻约束。</div>
+    </div>
+
+    <div class="card disabled">
+      <span class="badge soon">Soon</span>
+      <div class="card-icon">↝</div>
+      <div class="card-title">Zip</div>
+      <div class="card-desc">按数字顺序连成一条不重复路径，经过所有格子。</div>
+    </div>
+  </div>
+
+  <footer>Built by hand, one puzzle at a time.</footer>
+</div>
+</body>
+</html>
