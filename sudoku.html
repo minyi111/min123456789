@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Sudoku · 迷你数独</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #23262F;
+    --ink-soft: #565A66;
+    --shell: #1B1F2A;
+    --paper: #F6F1E4;
+    --accent: #3E7C6B;
+    --accent-soft: #DCE9E4;
+    --danger: #C1503F;
+    --danger-soft: #F5DCD7;
+    --gold: #C9A24B;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; min-height:100vh;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0) 0 0/22px 22px,
+      var(--shell);
+    color: var(--paper);
+    font-family: 'Inter', sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    padding: 32px 16px;
+  }
+  .app { width:100%; max-width: 460px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .back-link {
+    align-self:flex-start;
+    font-family:'Space Mono', monospace; font-size:12px;
+    color: rgba(246,241,228,0.55); text-decoration:none; margin-bottom:-6px;
+  }
+  .back-link:hover { color: var(--gold); }
+  .eyebrow {
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.28em;
+    text-transform:uppercase; color: var(--gold); opacity:0.9;
+  }
+  h1 {
+    font-family:'Space Mono', monospace; font-size: 34px; font-weight:700;
+    letter-spacing:0.02em; margin: 2px 0 0 0;
+  }
+  .sub { font-size:14px; color: rgba(246,241,228,0.6); text-align:center; line-height:1.6; max-width:400px; }
+  .toolbar { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .toolbar-group { display:flex; align-items:center; gap:8px; }
+  button {
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:600;
+    border-radius:8px; border:1px solid rgba(246,241,228,0.18);
+    background: rgba(246,241,228,0.06); color: var(--paper);
+    padding:9px 14px; cursor:pointer; transition: all .15s ease;
+  }
+  button:hover { background: rgba(246,241,228,0.14); }
+  button.primary { background: var(--accent); border-color: var(--accent); color:#EFF7F3; }
+  button.primary:hover { background: #468C79; }
+  .icon-btn { width:34px; height:34px; padding:0; border-radius:999px; font-family:'Space Mono',monospace; font-weight:700; }
+  .timer {
+    font-family:'Space Mono', monospace; font-size:15px; font-weight:700;
+    background: rgba(246,241,228,0.06); border:1px solid rgba(246,241,228,0.18);
+    border-radius:8px; padding:9px 14px; min-width:74px; text-align:center;
+  }
+  .board-wrap {
+    width: min(88vw, 380px); padding: 14px;
+    background: var(--paper); border-radius: 14px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(35,38,47,0.06);
+  }
+  .board {
+    display:grid; width:100%; aspect-ratio: 1/1;
+    background: var(--ink); border-radius:4px; overflow:hidden;
+  }
+  .cell {
+    position:relative; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none;
+    background: var(--paper);
+    font-family:'Space Mono', monospace; font-weight:700; font-size: clamp(16px, 5vw, 26px);
+    color: var(--ink);
+    transition: background .1s ease;
+  }
+  .cell.given { color: var(--ink); }
+  .cell.filled { color: var(--accent); }
+  .cell.highlight { background: #EFE7D3; }
+  .cell.selected { background: var(--accent-soft) !important; }
+  .cell.conflict { background: var(--danger-soft) !important; color: var(--danger) !important; }
+  .cell.given.conflict { color: var(--danger) !important; }
+  .numpad { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; width:100%; }
+  .numpad button {
+    width: 44px; height:44px; font-family:'Space Mono', monospace; font-size:17px; font-weight:700;
+    border-radius:10px; padding:0;
+  }
+  .numpad button.erase { width:auto; padding:0 14px; font-family:'Inter',sans-serif; font-size:12px; font-weight:600; }
+  .win-banner {
+    display:none; font-family:'Space Mono', monospace; background: var(--accent); color:#EFF7F3;
+    padding: 10px 20px; border-radius: 999px; font-weight:700; letter-spacing:0.05em; font-size:14px;
+    transform: rotate(-2deg); box-shadow: 0 8px 20px rgba(62,124,107,0.4);
+  }
+  .win-banner.show { display:inline-block; animation: stamp .35s ease; }
+  @keyframes stamp {
+    0% { transform: rotate(-2deg) scale(0.5); opacity:0; }
+    60% { transform: rotate(-2deg) scale(1.15); opacity:1; }
+    100% { transform: rotate(-2deg) scale(1); }
+  }
+  .generating { color: rgba(246,241,228,0.5); font-size:13px; font-family:'Space Mono', monospace; }
+  .legend { font-size:12px; color: rgba(246,241,228,0.55); text-align:center; line-height:1.7; }
+  .legend b { color: rgba(246,241,228,0.85); }
+
+  /* 规则说明弹窗，与Queens共用同一套视觉语言 */
+  .help-overlay {
+    position:fixed; inset:0; z-index:50; background: rgba(20,22,28,0.72);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .help-overlay.hidden { display:none; }
+  .help-card {
+    width:100%; max-width:420px; background: var(--paper); color: var(--ink);
+    border-radius:16px; padding:26px; box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+    max-height: 86vh; overflow-y:auto;
+  }
+  .help-eyebrow {
+    font-family:'Space Mono', monospace; font-size:11px; letter-spacing:0.22em;
+    text-transform:uppercase; color: var(--accent); margin-bottom:6px;
+  }
+  .help-title { font-family:'Space Mono', monospace; font-size:22px; margin:0 0 10px 0; }
+  .help-goal { font-size:13.5px; line-height:1.7; color: var(--ink-soft); margin:0 0 20px 0; }
+  .help-row { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+  .help-icon-box {
+    flex:none; width:36px; height:36px; border-radius:8px; background:#EFE7D3;
+    display:flex; align-items:center; justify-content:center; border:1px solid rgba(35,38,47,0.1);
+    font-family:'Space Mono', monospace; font-weight:700; font-size:15px;
+  }
+  .help-icon-conflict { background: var(--danger-soft) !important; color: var(--danger); }
+  .help-icon-solved { background: var(--accent-soft) !important; color: var(--accent); }
+  .help-text { font-size:13px; line-height:1.6; color: var(--ink); padding-top:6px; }
+  .help-close-btn { width:100%; margin-top:8px; padding:12px; font-size:14px; }
+  @media (prefers-reduced-motion: reduce) { .win-banner.show { animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <a href="index.html" class="back-link">← 拼图大厅</a>
+  <div class="eyebrow">Puzzle Prototype No.04</div>
+  <h1>MINI SUDOKU</h1>
+  <div class="sub">6 × 6 数独：每行、每列、每个 2×3 小宫格，1–6 各出现一次。第一次玩点右上角「?」看规则。</div>
+
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button class="primary" id="newGameBtn">新关卡</button>
+      <button id="clearBtn">清空我填的</button>
+      <button id="helpBtn" class="icon-btn" title="怎么玩">?</button>
+    </div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+
+  <div class="board-wrap"><div class="board" id="board"></div></div>
+
+  <div class="numpad" id="numpad"></div>
+
+  <div id="winBanner" class="win-banner">✓ SOLVED</div>
+  <div id="genStatus" class="generating"></div>
+
+  <div class="legend"><b>提示</b>：红色高亮代表当前存在冲突（同行/同列/同宫格重复）。</div>
+
+  <div id="helpOverlay" class="help-overlay">
+    <div class="help-card">
+      <div class="help-eyebrow">First time?</div>
+      <h2 class="help-title">怎么玩 Mini Sudoku</h2>
+      <p class="help-goal">在 6×6 棋盘里填满数字 1–6：<b>每一行、每一列、每一个 2×3 的小宫格</b>里，1 到 6 都要恰好出现一次，不能重复。</p>
+
+      <div class="help-row">
+        <div class="help-icon-box">👆</div>
+        <div class="help-text">先<b>点击一个空格子</b>选中它（会高亮同行/同列/同宫格，方便你判断）。</div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon-box">1-6</div>
+        <div class="help-text">再点下方<b>数字键盘</b>，或者直接<b>按键盘上的 1~6</b>，就会填进选中的格子。</div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon-box">⌫</div>
+        <div class="help-text">点「清除」按钮，或按键盘 <b>Backspace/Delete</b>，可以清空选中格子里填的数字（题目自带的数字不能改）。</div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon-box help-icon-conflict">!</div>
+        <div class="help-text"><b>红色高亮</b>代表当前有冲突（同行/同列/同宫格重复了），照着提示调整即可。</div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon-box help-icon-solved">✓</div>
+        <div class="help-text">填满且没有任何冲突，就会弹出 <b>SOLVED</b> 通关印章。</div>
+      </div>
+
+      <button class="primary help-close-btn" id="helpCloseBtn">知道了，开始挑战</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const N = 6, BOX_H = 2, BOX_W = 3;
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  function isValid(grid, r, c, val){
+    for(let i=0;i<N;i++){
+      if(grid[r][i] === val) return false;
+      if(grid[i][c] === val) return false;
+    }
+    const br = Math.floor(r/BOX_H)*BOX_H, bc = Math.floor(c/BOX_W)*BOX_W;
+    for(let i=br;i<br+BOX_H;i++) for(let j=bc;j<bc+BOX_W;j++) if(grid[i][j]===val) return false;
+    return true;
+  }
+
+  // 1) 生成一个完整合法的 6x6 数独解
+  function generateFullGrid(){
+    const grid = Array.from({length:N}, ()=> new Array(N).fill(0));
+    function backtrack(pos){
+      if(pos === N*N) return true;
+      const r = Math.floor(pos/N), c = pos % N;
+      for(const v of shuffle([1,2,3,4,5,6])){
+        if(isValid(grid, r, c, v)){
+          grid[r][c] = v;
+          if(backtrack(pos+1)) return true;
+          grid[r][c] = 0;
+        }
+      }
+      return false;
+    }
+    backtrack(0);
+    return grid;
+  }
+
+  // 2) 校验当前挖空后的题目解的数量（提前在 limit 处截止）
+  function countSolutions(grid, limit){
+    const g = grid.map(row => row.slice());
+    let count = 0;
+    function backtrack(){
+      if(count >= limit) return;
+      let pos = -1;
+      for(let i=0;i<N*N;i++){ if(g[Math.floor(i/N)][i%N] === 0){ pos = i; break; } }
+      if(pos === -1){ count++; return; }
+      const r = Math.floor(pos/N), c = pos % N;
+      for(let v=1; v<=N; v++){
+        if(isValid(g, r, c, v)){
+          g[r][c] = v;
+          backtrack();
+          g[r][c] = 0;
+          if(count >= limit) return;
+        }
+      }
+    }
+    backtrack();
+    return count;
+  }
+
+  // 3) 从完整解开始逐格挖空，每挖一格都验证唯一解，不唯一就补回去
+  function makePuzzle(){
+    const full = generateFullGrid();
+    const puzzle = full.map(row => row.slice());
+    const positions = shuffle([...Array(N*N).keys()]);
+    for(const pos of positions){
+      const r = Math.floor(pos/N), c = pos % N;
+      const backup = puzzle[r][c];
+      puzzle[r][c] = 0;
+      if(countSolutions(puzzle, 2) !== 1){
+        puzzle[r][c] = backup;
+      }
+    }
+    return { full, puzzle };
+  }
+
+  // ---------- 游戏状态与渲染 ----------
+  let given = [];     // 布尔矩阵：是否是题目自带的数字（不可编辑）
+  let values = [];    // 当前填的数字，0 表示空
+  let selected = null; // {r,c}
+  let cellEls = [];
+  let timerHandle = null, seconds = 0, started = false;
+
+  const boardEl = document.getElementById('board');
+  const timerEl = document.getElementById('timer');
+  const winBanner = document.getElementById('winBanner');
+  const genStatus = document.getElementById('genStatus');
+  const numpadEl = document.getElementById('numpad');
+
+  function resetTimer(){
+    clearInterval(timerHandle);
+    seconds = 0; started = false;
+    timerEl.textContent = '00:00';
+  }
+  function startTimerIfNeeded(){
+    if(started) return;
+    started = true;
+    timerHandle = setInterval(()=>{
+      seconds++;
+      const m = String(Math.floor(seconds/60)).padStart(2,'0');
+      const s = String(seconds%60).padStart(2,'0');
+      timerEl.textContent = `${m}:${s}`;
+    }, 1000);
+  }
+
+  function computeConflicts(){
+    const bad = new Set();
+    for(let r=0;r<N;r++){
+      const seen = {};
+      for(let c=0;c<N;c++){
+        const v = values[r][c];
+        if(!v) continue;
+        if(seen[v] !== undefined){ bad.add(r+'-'+c); bad.add(r+'-'+seen[v]); }
+        else seen[v] = c;
+      }
+    }
+    for(let c=0;c<N;c++){
+      const seen = {};
+      for(let r=0;r<N;r++){
+        const v = values[r][c];
+        if(!v) continue;
+        if(seen[v] !== undefined){ bad.add(r+'-'+c); bad.add(seen[v]+'-'+c); }
+        else seen[v] = r;
+      }
+    }
+    for(let br=0;br<N;br+=BOX_H){
+      for(let bc=0;bc<N;bc+=BOX_W){
+        const seen = {};
+        for(let i=br;i<br+BOX_H;i++){
+          for(let j=bc;j<bc+BOX_W;j++){
+            const v = values[i][j];
+            if(!v) continue;
+            if(seen[v] !== undefined){ bad.add(i+'-'+j); bad.add(seen[v]); }
+            else seen[v] = i+'-'+j;
+          }
+        }
+      }
+    }
+    return bad;
+  }
+
+  function checkWin(bad){
+    const filled = values.every(row => row.every(v => v !== 0));
+    if(filled && bad.size === 0){
+      clearInterval(timerHandle);
+      winBanner.classList.add('show');
+    }
+  }
+
+  function updateAllCellVisuals(){
+    const bad = computeConflicts();
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const cell = cellEls[r][c];
+        const v = values[r][c];
+        cell.textContent = v || '';
+        cell.classList.toggle('conflict', bad.has(r+'-'+c));
+        const isSameUnit = selected && (
+          r === selected.r || c === selected.c ||
+          (Math.floor(r/BOX_H) === Math.floor(selected.r/BOX_H) && Math.floor(c/BOX_W) === Math.floor(selected.c/BOX_W))
+        );
+        cell.classList.toggle('highlight', !!isSameUnit && !(selected.r===r && selected.c===c));
+        cell.classList.toggle('selected', !!selected && selected.r===r && selected.c===c);
+      }
+    }
+    checkWin(bad);
+  }
+
+  function selectCell(r, c){
+    if(given[r][c]) { selected = {r,c}; updateAllCellVisuals(); return; }
+    selected = {r,c};
+    updateAllCellVisuals();
+  }
+
+  function setSelectedValue(v){
+    if(!selected) return;
+    const {r,c} = selected;
+    if(given[r][c]) return;
+    startTimerIfNeeded();
+    values[r][c] = v;
+    updateAllCellVisuals();
+  }
+
+  function render(){
+    boardEl.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${N}, 1fr)`;
+    boardEl.innerHTML = '';
+    cellEls = Array.from({length:N}, ()=> new Array(N));
+
+    const thin = '1px solid rgba(35,38,47,0.12)';
+    const thick = '2.5px solid #23262F';
+
+    for(let r=0;r<N;r++){
+      for(let c=0;c<N;c++){
+        const cell = document.createElement('div');
+        cell.className = 'cell' + (given[r][c] ? ' given' : ' filled');
+        cell.style.borderRight = (c<N-1 && (c+1) % BOX_W === 0) ? thick : thin;
+        cell.style.borderBottom = (r<N-1 && (r+1) % BOX_H === 0) ? thick : thin;
+        cell.style.borderLeft = (c===0) ? thick : 'none';
+        cell.style.borderTop = (r===0) ? thick : 'none';
+        cell.addEventListener('click', ()=> selectCell(r,c));
+        cellEls[r][c] = cell;
+        boardEl.appendChild(cell);
+      }
+    }
+    updateAllCellVisuals();
+  }
+
+  function buildNumpad(){
+    numpadEl.innerHTML = '';
+    for(let v=1; v<=N; v++){
+      const btn = document.createElement('button');
+      btn.textContent = v;
+      btn.addEventListener('click', ()=> setSelectedValue(v));
+      numpadEl.appendChild(btn);
+    }
+    const erase = document.createElement('button');
+    erase.textContent = '清除';
+    erase.className = 'erase';
+    erase.addEventListener('click', ()=> setSelectedValue(0));
+    numpadEl.appendChild(erase);
+  }
+
+  function newGame(){
+    winBanner.classList.remove('show');
+    resetTimer();
+    selected = null;
+    genStatus.textContent = '正在生成关卡…';
+    boardEl.innerHTML = '';
+    setTimeout(()=>{
+      const { puzzle } = makePuzzle();
+      given = puzzle.map(row => row.map(v => v !== 0));
+      values = puzzle.map(row => row.slice());
+      genStatus.textContent = '';
+      render();
+    }, 20);
+  }
+
+  document.getElementById('newGameBtn').addEventListener('click', newGame);
+  document.getElementById('clearBtn').addEventListener('click', ()=>{
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++) if(!given[r][c]) values[r][c] = 0;
+    winBanner.classList.remove('show');
+    resetTimer();
+    updateAllCellVisuals();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(!selected) return;
+    if(e.key >= '1' && e.key <= String(N)) setSelectedValue(parseInt(e.key,10));
+    else if(e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') setSelectedValue(0);
+  });
+
+  // ---------- 规则说明弹窗 ----------
+  const helpOverlay = document.getElementById('helpOverlay');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpCloseBtn = document.getElementById('helpCloseBtn');
+  function openHelp(){ helpOverlay.classList.remove('hidden'); }
+  function closeHelp(){ helpOverlay.classList.add('hidden'); }
+  helpBtn.addEventListener('click', openHelp);
+  helpCloseBtn.addEventListener('click', closeHelp);
+  helpOverlay.addEventListener('click', (e)=>{ if(e.target === helpOverlay) closeHelp(); });
+
+  buildNumpad();
+  newGame();
+  openHelp();
+})();
+</script>
+</body>
+</html>
